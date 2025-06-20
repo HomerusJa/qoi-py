@@ -20,12 +20,14 @@ type RGBImageContent = Annotated[npt.NDArray[np.uint8], ("height", "width", 3)]
 type RGBAImageContent = Annotated[npt.NDArray[np.uint8], ("height", "width", 4)]
 type ImageContent = RGBAImageContent | RGBImageContent
 
+
 @dataclass
 class RGBImage:
     width: int
     height: int
     colorspace: QOIColorspace
     data: RGBImageContent
+
 
 @dataclass
 class RGBAImage:
