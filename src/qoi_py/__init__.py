@@ -9,3 +9,4 @@ from .types import (
 )
 from .decode import qoi_decode as qoi_decode
 from .encode import qoi_encode as qoi_encode
+from .header import QOIHeader as QOIHeader
