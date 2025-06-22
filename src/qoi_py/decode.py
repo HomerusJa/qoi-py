@@ -33,7 +33,7 @@ def qoi_decode(data: bytes, channels: Literal[QOIChannelCount.RGBA]) -> RGBAImag
 
 
 @overload
-def qoi_decode(data: bytes, channels: None) -> RGBImage | RGBAImage: ...
+def qoi_decode(data: bytes, channels: None = None) -> RGBImage | RGBAImage: ...
 
 
 def qoi_decode(
