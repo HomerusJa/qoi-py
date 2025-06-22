@@ -2,6 +2,10 @@ from enum import IntEnum
 from typing import Self
 
 
+MASK_2BIT_OPCODE = 0xC0  # 11000000
+MASK_2BIT_DATA = 0x3F  # 00111111
+
+
 class QOIOpcode(IntEnum):
     """A QOI opcode."""
 
@@ -16,9 +20,11 @@ class QOIOpcode(IntEnum):
     def from_byte(cls, byte: int) -> Self:
         """Get the opcode from a byte (0-255).
 
-        As defined by the QOI specification, the 8-bit opcodes are tried first,
-        and if the byte does not match any of those, the first two bits are
-        masked to get the 2-bit opcodes.
+        > The 8-bit tags have precedence over the 2-bit tags. A decoder must
+          check for the presence of an 8-bit tag first.
+          (QOI Specification)
+
+        The function handles this logic.
         """
         if not (0 <= byte < 256):
             raise ValueError("Byte must be in the range 0-255.")
@@ -28,4 +34,4 @@ class QOIOpcode(IntEnum):
             return cls(byte)
 
         # Now, mask to get the first two bits for 2-bit opcodes
-        return cls(byte & 0xC0)
+        return cls(byte & MASK_2BIT_OPCODE)

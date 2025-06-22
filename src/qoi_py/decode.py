@@ -1,8 +1,27 @@
 from .types import RGBImage, RGBAImage, QOIChannelCount
+from .opcodes import QOIOpcode, MASK_2BIT_DATA
 from .header import QOIHeader
 from .pixel import Pixel
 import numpy as np
 from typing import assert_never, overload, Literal
+
+
+def _wraparound(value: int, min_value: int = 0, max_value: int = 256) -> int:
+    """Wrap around a value to be within min_value (inclusive) and max_value (exclusive)
+
+    Examples:
+        >>> _wraparound(257)
+        1
+        >>> _wraparound(-1)
+        255
+        >>> _wraparound(128, 100, 200)
+        128
+        >>> _wraparound(99, 100, 200)
+        200
+        >>> _wraparound(201, 100, 200)
+        101
+    """
+    return (value - min_value) % (max_value - min_value) + min_value
 
 
 @overload
@@ -32,19 +51,93 @@ def qoi_decode(
         RGBImage | RGBAImage: The decoded image as an RGB or RGBA image.
     """
     header = QOIHeader.from_bytes(data[:14])
+    print(f"{header=}")
     if channels is None:
         channels = header.channels
+    else:
+        print(f"Channels already given: {channels}")
 
-    # Temporarily rename these to _ to make the type checker happy
-    _: list[Pixel | None] = [None for _ in range(64)]
-    __ = Pixel(0, 0, 0, 255)
+    running_index: list[Pixel] = [
+        Pixel(0, 0, 0, 0) for _ in range(64)
+    ]  # FIXME: Is this correct?
+    pixel = Pixel(0, 0, 0, 255)
+    run_length: int | None = None
 
     img_data = np.empty((header.height * header.width, channels.value), dtype=np.uint8)
+    img_data_pointer = 0
 
-    pointer = 14
-    while pointer < len(data):
-        break
-        # TODO
+    in_data_pointer = 14
+    try:
+        while (
+            in_data_pointer < len(data) - 8
+        ):  # Last 8 bytes are padding (7x 0x00 and 1x 0x01)
+            bit1 = data[in_data_pointer]
+            match QOIOpcode.from_byte(bit1):
+                case QOIOpcode.INDEX:
+                    index = bit1 & MASK_2BIT_DATA
+                    candidate = running_index[index]
+                    # if candidate is None:
+                    #     print(running_index)
+                    #     print(f"{index=}")
+                    #     raise ValueError("Invalid QOI image: INDEX opcode not present in array.")
+                    pixel = candidate
+
+                    in_data_pointer += 1
+                case QOIOpcode.DIFF:
+                    # Differences are -2..1
+                    rdiff = ((bit1 & 0b00110000) >> 4) - 2
+                    pixel.r = _wraparound(pixel.r + rdiff)
+                    gdiff = ((bit1 & 0b00001100) >> 2) - 2
+                    pixel.g = _wraparound(pixel.g + gdiff)
+                    bdiff = (bit1 & 0b00000011) - 2
+                    pixel.b = _wraparound(pixel.b + bdiff)
+                    # alpha is unchanged
+
+                    in_data_pointer += 1
+                case QOIOpcode.LUMA:
+                    bit2 = data[in_data_pointer + 1]
+                    gdiff = bit1 & 0b00111111 - 32
+                    rdiff_gdiff = ((bit2 & 0b11110000) >> 4) - 8
+                    bdiff_gdiff = (bit2 & 0b00001111) - 8
+
+                    pixel.g = _wraparound(pixel.g + gdiff)
+                    pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
+                    pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
+                    in_data_pointer += 2
+                case QOIOpcode.RUN:
+                    run_length = (bit1 & MASK_2BIT_DATA) + 1
+                    in_data_pointer += 1
+                case QOIOpcode.RGB:
+                    pixel.r = data[in_data_pointer + 1]
+                    pixel.g = data[in_data_pointer + 2]
+                    pixel.b = data[in_data_pointer + 3]
+                    # alpha stays unchanged
+
+                    in_data_pointer += 4  # Opcode + 3 color bytes
+                case QOIOpcode.RGBA:
+                    pixel.r = data[in_data_pointer + 1]
+                    pixel.g = data[in_data_pointer + 2]
+                    pixel.b = data[in_data_pointer + 3]
+                    pixel.a = data[in_data_pointer + 4]
+
+                    in_data_pointer += 5  # Opcode + 4 color bytes
+
+            running_index[pixel.hash()] = pixel
+
+            for _ in range(run_length if run_length is not None else 1):
+                img_data[img_data_pointer][0] = pixel.r
+                img_data[img_data_pointer][1] = pixel.g
+                img_data[img_data_pointer][2] = pixel.b
+
+                if channels == QOIChannelCount.RGBA:
+                    img_data[img_data_pointer][3] = pixel.a
+                img_data_pointer += 1
+            run_length = None
+    except Exception:
+        print(
+            f"{bit1=}, {in_data_pointer=}, {len(data)=}, {QOIOpcode.from_byte(bit1)=}"
+        )
+        raise
 
     if channels == QOIChannelCount.RGB:
         return RGBImage(
