@@ -67,77 +67,71 @@ def qoi_decode(
     img_data_pointer = 0
 
     in_data_pointer = 14
-    try:
-        while (
-            in_data_pointer < len(data) - 8
-        ):  # Last 8 bytes are padding (7x 0x00 and 1x 0x01)
-            bit1 = data[in_data_pointer]
-            match QOIOpcode.from_byte(bit1):
-                case QOIOpcode.INDEX:
-                    index = bit1 & MASK_2BIT_DATA
-                    candidate = running_index[index]
-                    # if candidate is None:
-                    #     print(running_index)
-                    #     print(f"{index=}")
-                    #     raise ValueError("Invalid QOI image: INDEX opcode not present in array.")
-                    pixel = candidate
+    while (
+        in_data_pointer < len(data) - 8
+    ):  # Last 8 bytes are padding (7x 0x00 and 1x 0x01)
+        bit1 = data[in_data_pointer]
+        match QOIOpcode.from_byte(bit1):
+            case QOIOpcode.INDEX:
+                index = bit1 & MASK_2BIT_DATA
+                candidate = running_index[index]
+                # if candidate is None:
+                #     print(running_index)
+                #     print(f"{index=}")
+                #     raise ValueError("Invalid QOI image: INDEX opcode not present in array.")
+                pixel = candidate
 
-                    in_data_pointer += 1
-                case QOIOpcode.DIFF:
-                    # Differences are -2..1
-                    rdiff = ((bit1 & 0b00110000) >> 4) - 2
-                    pixel.r = _wraparound(pixel.r + rdiff)
-                    gdiff = ((bit1 & 0b00001100) >> 2) - 2
-                    pixel.g = _wraparound(pixel.g + gdiff)
-                    bdiff = (bit1 & 0b00000011) - 2
-                    pixel.b = _wraparound(pixel.b + bdiff)
-                    # alpha is unchanged
+                in_data_pointer += 1
+            case QOIOpcode.DIFF:
+                # Differences are -2..1
+                rdiff = ((bit1 & 0b00110000) >> 4) - 2
+                pixel.r = _wraparound(pixel.r + rdiff)
+                gdiff = ((bit1 & 0b00001100) >> 2) - 2
+                pixel.g = _wraparound(pixel.g + gdiff)
+                bdiff = (bit1 & 0b00000011) - 2
+                pixel.b = _wraparound(pixel.b + bdiff)
+                # alpha is unchanged
 
-                    in_data_pointer += 1
-                case QOIOpcode.LUMA:
-                    bit2 = data[in_data_pointer + 1]
-                    gdiff = bit1 & 0b00111111 - 32
-                    rdiff_gdiff = ((bit2 & 0b11110000) >> 4) - 8
-                    bdiff_gdiff = (bit2 & 0b00001111) - 8
+                in_data_pointer += 1
+            case QOIOpcode.LUMA:
+                bit2 = data[in_data_pointer + 1]
+                gdiff = bit1 & 0b00111111 - 32
+                rdiff_gdiff = ((bit2 & 0b11110000) >> 4) - 8
+                bdiff_gdiff = (bit2 & 0b00001111) - 8
 
-                    pixel.g = _wraparound(pixel.g + gdiff)
-                    pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
-                    pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
-                    in_data_pointer += 2
-                case QOIOpcode.RUN:
-                    run_length = (bit1 & MASK_2BIT_DATA) + 1
-                    in_data_pointer += 1
-                case QOIOpcode.RGB:
-                    pixel.r = data[in_data_pointer + 1]
-                    pixel.g = data[in_data_pointer + 2]
-                    pixel.b = data[in_data_pointer + 3]
-                    # alpha stays unchanged
+                pixel.g = _wraparound(pixel.g + gdiff)
+                pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
+                pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
+                in_data_pointer += 2
+            case QOIOpcode.RUN:
+                run_length = (bit1 & MASK_2BIT_DATA) + 1
+                in_data_pointer += 1
+            case QOIOpcode.RGB:
+                pixel.r = data[in_data_pointer + 1]
+                pixel.g = data[in_data_pointer + 2]
+                pixel.b = data[in_data_pointer + 3]
+                # alpha stays unchanged
 
-                    in_data_pointer += 4  # Opcode + 3 color bytes
-                case QOIOpcode.RGBA:
-                    pixel.r = data[in_data_pointer + 1]
-                    pixel.g = data[in_data_pointer + 2]
-                    pixel.b = data[in_data_pointer + 3]
-                    pixel.a = data[in_data_pointer + 4]
+                in_data_pointer += 4  # Opcode + 3 color bytes
+            case QOIOpcode.RGBA:
+                pixel.r = data[in_data_pointer + 1]
+                pixel.g = data[in_data_pointer + 2]
+                pixel.b = data[in_data_pointer + 3]
+                pixel.a = data[in_data_pointer + 4]
 
-                    in_data_pointer += 5  # Opcode + 4 color bytes
+                in_data_pointer += 5  # Opcode + 4 color bytes
 
-            running_index[pixel.hash()] = pixel
+        running_index[pixel.hash()] = pixel
 
-            for _ in range(run_length if run_length is not None else 1):
-                img_data[img_data_pointer][0] = pixel.r
-                img_data[img_data_pointer][1] = pixel.g
-                img_data[img_data_pointer][2] = pixel.b
+        for _ in range(run_length if run_length is not None else 1):
+            img_data[img_data_pointer][0] = pixel.r
+            img_data[img_data_pointer][1] = pixel.g
+            img_data[img_data_pointer][2] = pixel.b
 
-                if channels == QOIChannelCount.RGBA:
-                    img_data[img_data_pointer][3] = pixel.a
-                img_data_pointer += 1
-            run_length = None
-    except Exception:
-        print(
-            f"{bit1=}, {in_data_pointer=}, {len(data)=}, {QOIOpcode.from_byte(bit1)=}"
-        )
-        raise
+            if channels == QOIChannelCount.RGBA:
+                img_data[img_data_pointer][3] = pixel.a
+            img_data_pointer += 1
+        run_length = None
 
     if channels == QOIChannelCount.RGB:
         return RGBImage(
