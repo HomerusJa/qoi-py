@@ -216,3 +216,51 @@ def test_decode_diff_rgba():
     assert img.data[0][1][1] == 18  # 20 - 2
     assert img.data[0][1][2] == 30  # 30 + 0
     assert img.data[0][1][3] == 40  # alpha stays unchanged
+
+
+def test_decode_luma_rgb_gdiff_only():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGB,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGB opcode (0xFE) (r=40, g=50, b=60)
+    # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
+    data = header + bytes([0xFE, 40, 50, 60, 0b10000000, 0x88]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGB)
+
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 40
+    assert img.data[0][0][1] == 50
+    assert img.data[0][0][2] == 60
+
+    assert img.data[0][1][0] == 8  # r = 40 - 32
+    assert img.data[0][1][1] == 18  # g = 50 - 32
+    assert img.data[0][1][2] == 28  # b = 60 - 32
+
+
+def test_decode_luma_rgb_gdiff_only_wraparound():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGB,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGB opcode (0xFE) (r=10, g=20, b=32)
+    # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
+    data = header + bytes([0xFE, 10, 20, 32, 0b10000000, 0x88]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGB)
+
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 10
+    assert img.data[0][0][1] == 20
+    assert img.data[0][0][2] == 32
+
+    assert img.data[0][1][0] == 234  # r = 10 - 32 + 256 (wraps around)
+    assert img.data[0][1][1] == 244  # g = 20 - 32 + 256 (wraps around)
+    assert img.data[0][1][2] == 0  # b = 32 - 32

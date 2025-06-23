@@ -70,10 +70,10 @@ def qoi_decode(
     while (
         in_data_pointer < len(data) - 8
     ):  # Last 8 bytes are padding (7x 0x00 and 1x 0x01)
-        bit1 = data[in_data_pointer]
-        match QOIOpcode.from_byte(bit1):
+        byte1 = data[in_data_pointer]
+        match QOIOpcode.from_byte(byte1):
             case QOIOpcode.INDEX:
-                index = bit1 & MASK_2BIT_DATA
+                index = byte1 & MASK_2BIT_DATA
                 candidate = running_index[index]
                 # if candidate is None:
                 #     print(running_index)
@@ -84,27 +84,33 @@ def qoi_decode(
                 in_data_pointer += 1
             case QOIOpcode.DIFF:
                 # Differences are -2..1
-                rdiff = ((bit1 & 0b00110000) >> 4) - 2
+                rdiff = ((byte1 & 0b00110000) >> 4) - 2
                 pixel.r = _wraparound(pixel.r + rdiff)
-                gdiff = ((bit1 & 0b00001100) >> 2) - 2
+                gdiff = ((byte1 & 0b00001100) >> 2) - 2
                 pixel.g = _wraparound(pixel.g + gdiff)
-                bdiff = (bit1 & 0b00000011) - 2
+                bdiff = (byte1 & 0b00000011) - 2
                 pixel.b = _wraparound(pixel.b + bdiff)
                 # alpha is unchanged
 
                 in_data_pointer += 1
             case QOIOpcode.LUMA:
-                bit2 = data[in_data_pointer + 1]
-                gdiff = bit1 & 0b00111111 - 32
-                rdiff_gdiff = ((bit2 & 0b11110000) >> 4) - 8
-                bdiff_gdiff = (bit2 & 0b00001111) - 8
+                byte2 = data[in_data_pointer + 1]
+                gdiff = (byte1 & 0b00111111) - 32
+                rdiff_gdiff = ((byte2 & 0b11110000) >> 4) - 8
+                bdiff_gdiff = (byte2 & 0b00001111) - 8
 
-                pixel.g = _wraparound(pixel.g + gdiff)
                 pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
+                pixel.g = _wraparound(pixel.g + gdiff)
                 pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
+
+                print(
+                    f"Decoded LUMA: {pixel=}, {rdiff_gdiff=}, {gdiff=}, {bdiff_gdiff=}"
+                )
+                print(f"{byte1=:08b}, {byte2=:08b}")
+
                 in_data_pointer += 2
             case QOIOpcode.RUN:
-                run_length = (bit1 & MASK_2BIT_DATA) + 1
+                run_length = (byte1 & MASK_2BIT_DATA) + 1
                 in_data_pointer += 1
             case QOIOpcode.RGB:
                 pixel.r = data[in_data_pointer + 1]
@@ -128,7 +134,6 @@ def qoi_decode(
 
         running_index[pixel.hash()] = pixel
 
-        print(f"{run_length=}, {pixel=}, {running_index[pixel.hash()]=}")
         for _ in range(run_length if run_length is not None else 1):
             img_data[img_data_pointer][0] = pixel.r
             img_data[img_data_pointer][1] = pixel.g
