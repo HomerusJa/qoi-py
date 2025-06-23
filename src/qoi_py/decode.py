@@ -114,6 +114,11 @@ def qoi_decode(
 
                 in_data_pointer += 4  # Opcode + 3 color bytes
             case QOIOpcode.RGBA:
+                if channels != QOIChannelCount.RGBA:
+                    raise ValueError(
+                        "RGBA opcode encountered, but channels is not set to RGBA."
+                    )
+
                 pixel.r = data[in_data_pointer + 1]
                 pixel.g = data[in_data_pointer + 2]
                 pixel.b = data[in_data_pointer + 3]
@@ -123,6 +128,7 @@ def qoi_decode(
 
         running_index[pixel.hash()] = pixel
 
+        print(f"{run_length=}, {pixel=}, {running_index[pixel.hash()]=}")
         for _ in range(run_length if run_length is not None else 1):
             img_data[img_data_pointer][0] = pixel.r
             img_data[img_data_pointer][1] = pixel.g
