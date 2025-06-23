@@ -39,6 +39,26 @@ def test_decode_run():
         assert img.data[0][i][2] == 30
 
 
+def test_decode_rgba_run():
+    header = QOIHeader(
+        width=4,
+        height=1,
+        channels=QOIChannelCount.RGBA,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGBA opcode (0xFF) (r=10, g=20, b=30, a=40); run opcode and three pixel run (0xC2) -> bias of -1
+    data = header + bytes([0xFF, 10, 20, 30, 40, 0xC2]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGBA)
+    assert img.width == 4
+    assert img.height == 1
+
+    for i in range(4):
+        assert img.data[0][i][0] == 10
+        assert img.data[0][i][1] == 20
+        assert img.data[0][i][2] == 30
+        assert img.data[0][i][3] == 40
+
+
 def test_decode_multiple_rgb_pixels():
     header = QOIHeader(
         width=4,
@@ -97,3 +117,51 @@ def test_decode_multiple_rgba_pixels():
     assert row[2][1] == 26
     assert row[2][2] == 34
     assert row[2][3] == 120
+
+
+def test_decode_index_rgba():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGBA,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGBA opcode (0xFF) (r=10, g=20, b=30, a=40) -> hash is 12
+    # Index opcode (0x00) -> uses the pixel at index 12
+    data = header + bytes([0xFF, 10, 20, 30, 40, 0x0C]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGBA)
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 10
+    assert img.data[0][0][1] == 20
+    assert img.data[0][0][2] == 30
+    assert img.data[0][0][3] == 40
+
+    assert img.data[0][1][0] == 10
+    assert img.data[0][1][1] == 20
+    assert img.data[0][1][2] == 30
+    assert img.data[0][1][3] == 40
+
+
+def test_decode_index_rgb():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGB,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGB opcode (0xFE) (r=10, g=20, b=30, (a=255)), alpha implicit -> hash is 9
+    # Index opcode (0x00) -> uses the pixel at index 9
+    data = header + bytes([0xFE, 10, 20, 30, 0x09]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGB)
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 10
+    assert img.data[0][0][1] == 20
+    assert img.data[0][0][2] == 30
+
+    assert img.data[0][1][0] == 10
+    assert img.data[0][1][1] == 20
+    assert img.data[0][1][2] == 30
