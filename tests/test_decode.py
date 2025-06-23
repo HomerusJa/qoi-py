@@ -242,7 +242,7 @@ def test_decode_luma_rgb_gdiff_only():
     assert img.data[0][1][2] == 28  # b = 60 - 32
 
 
-def test_decode_luma_rgb_gdiff_only_wraparound():
+def test_decode_luma_rgb_gdiff_only_wraparound_low():
     header = QOIHeader(
         width=2,
         height=1,
@@ -264,3 +264,51 @@ def test_decode_luma_rgb_gdiff_only_wraparound():
     assert img.data[0][1][0] == 234  # r = 10 - 32 + 256 (wraps around)
     assert img.data[0][1][1] == 244  # g = 20 - 32 + 256 (wraps around)
     assert img.data[0][1][2] == 0  # b = 32 - 32
+
+
+def test_decode_luma_rgb_gdiff_only_wraparound_high():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGB,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGB opcode (0xFE) (r=224, g=240, b=250)
+    # Luma opcode (0x80) with gdiff = 31 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
+    data = header + bytes([0xFE, 224, 240, 250, 0b10111111, 0x88]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGB)
+
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 224
+    assert img.data[0][0][1] == 240
+    assert img.data[0][0][2] == 250
+
+    assert img.data[0][1][0] == 255  # r = 224 + 31
+    assert img.data[0][1][1] == 15  # g = 240 + 31 - 256 (wraps around)
+    assert img.data[0][1][2] == 25  # b = 250 + 31 - 256 (wraps around)
+
+
+def test_decode_luma_rgb_all_diffs():
+    header = QOIHeader(
+        width=2,
+        height=1,
+        channels=QOIChannelCount.RGB,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # RGB opcode (0xFE) (r=80, g=90, b=100)
+    # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = -8, bdiff_gdiff = 7 (both with a bias of 8)
+    data = header + bytes([0xFE, 80, 90, 100, 0b10000000, 0b00001111]) + _END_MARKER
+    img = qoi_decode(data, QOIChannelCount.RGB)
+
+    assert img.width == 2
+    assert img.height == 1
+
+    assert img.data[0][0][0] == 80
+    assert img.data[0][0][1] == 90
+    assert img.data[0][0][2] == 100
+
+    assert img.data[0][1][0] == 40  # r = 80 - 32 - 8
+    assert img.data[0][1][1] == 58  # g = 90 - 32
+    assert img.data[0][1][2] == 75  # b = 100 - 32 + 7
