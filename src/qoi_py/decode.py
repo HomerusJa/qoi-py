@@ -51,11 +51,8 @@ def qoi_decode(
         RGBImage | RGBAImage: The decoded image as an RGB or RGBA image.
     """
     header = QOIHeader.from_bytes(data[:14])
-    print(f"{header=}")
     if channels is None:
         channels = header.channels
-    else:
-        print(f"Channels already given: {channels}")
 
     running_index: list[Pixel] = [
         Pixel(0, 0, 0, 0) for _ in range(64)
@@ -74,12 +71,7 @@ def qoi_decode(
         match QOIOpcode.from_byte(byte1):
             case QOIOpcode.INDEX:
                 index = byte1 & MASK_2BIT_DATA
-                candidate = running_index[index]
-                # if candidate is None:
-                #     print(running_index)
-                #     print(f"{index=}")
-                #     raise ValueError("Invalid QOI image: INDEX opcode not present in array.")
-                pixel = candidate
+                pixel = running_index[index].copy()
 
                 in_data_pointer += 1
             case QOIOpcode.DIFF:
@@ -102,11 +94,6 @@ def qoi_decode(
                 pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
                 pixel.g = _wraparound(pixel.g + gdiff)
                 pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
-
-                print(
-                    f"Decoded LUMA: {pixel=}, {rdiff_gdiff=}, {gdiff=}, {bdiff_gdiff=}"
-                )
-                print(f"{byte1=:08b}, {byte2=:08b}")
 
                 in_data_pointer += 2
             case QOIOpcode.RUN:
@@ -132,7 +119,7 @@ def qoi_decode(
 
                 in_data_pointer += 5  # Opcode + 4 color bytes
 
-        running_index[pixel.hash()] = pixel
+        running_index[pixel.hash()] = pixel.copy()
 
         for _ in range(run_length if run_length is not None else 1):
             img_data[img_data_pointer][0] = pixel.r
