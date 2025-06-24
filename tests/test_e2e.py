@@ -6,18 +6,23 @@ import numpy as np
 from qoi_py import qoi_decode, qoi_encode
 
 
-def get_test_images_map():
-    assets = (Path(__file__).parent / "assets").resolve()
-    return [
+def get_test_images_map_and_ids() -> tuple[list[tuple[Path, Path]], list[str]]:
+    assets_path = (Path(__file__).parent / "assets").resolve()
+    test_cases = [
         (qoi, qoi.with_suffix(".png"))
-        for qoi in assets.glob("*.qoi")
+        for qoi in assets_path.glob("*.qoi")
         if (qoi.with_suffix(".png")).exists()
     ]
+    test_ids = [f"{qoi.stem}" for (qoi, _) in test_cases]
+    return test_cases, test_ids
+
+
+test_cases, test_ids = get_test_images_map_and_ids()
 
 
 @pytest.mark.xfail(reason="Implementation has bugs")
 @pytest.mark.e2e
-@pytest.mark.parametrize("qoi_image, png_image", get_test_images_map())
+@pytest.mark.parametrize("qoi_image, png_image", test_cases, ids=test_ids)
 def test_qoi_decode(qoi_image: Path, png_image: Path):
     """Test decoding QOI images to PNG format."""
     qoi_data = qoi_image.read_bytes()
@@ -36,7 +41,7 @@ def test_qoi_decode(qoi_image: Path, png_image: Path):
 
 @pytest.mark.skip(reason="Not implemented")
 @pytest.mark.e2e
-@pytest.mark.parametrize("qoi_image, png_image", get_test_images_map())
+@pytest.mark.parametrize("qoi_image, png_image", test_cases, ids=test_ids)
 def test_qoi_encode(qoi_image: Path, png_image: Path):
     """Test encoding numpy arrays to QOI format."""
     qoi_data = qoi_image.read_bytes()
