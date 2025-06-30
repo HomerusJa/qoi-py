@@ -30,3 +30,7 @@ testpaths = [
 markers = [
     "e2e: marks tests as end-to-end tests (deselect with '-m \"not e2e\"')"
 ]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
