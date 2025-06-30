@@ -314,3 +314,36 @@ def test_decode_luma_rgb_all_diffs():
     assert img.data[0][1][0] == 40  # r = 80 - 32 - 8
     assert img.data[0][1][1] == 58  # g = 90 - 32
     assert img.data[0][1][2] == 75  # b = 100 - 32 + 7
+
+
+def test_decode_index_use_multiple_times():
+    # Replication of a bug where the index array was using mutable references
+    header = QOIHeader(
+        width=5,
+        height=1,
+        channels=QOIChannelCount.RGBA,
+        colorspace=QOIColorspace.SRGB,
+    ).to_bytes()
+    # fmt: off
+    data = header + bytes(
+        [
+            0xFF, 10, 20, 30, 255,  # First pixel (r=10, g=20, b=30, a=255), hash is 9
+            0b00001001,             # INDEX opcode (0b00) and index 9
+            0xFF, 40, 50, 60, 255,  # Second pixel (r=40, g=50, b=60, a=255), hash is 11
+            0b00001011,             # INDEX opcode (0b00) and index 11
+            0b00001001,             # INDEX opcode (0b00) and index 9 again  -> This decoded the second pixel before
+        ]
+    ) + _END_MARKER
+    # fmt: on
+    img = qoi_decode(data, QOIChannelCount.RGBA)
+
+    assert img.data.shape == (1, 5, 4)  # 1 row, 5 pixels, 4 channels (RGBA)
+
+    px1 = (10, 20, 30, 255)
+    px2 = (40, 50, 60, 255)
+
+    assert tuple(img.data[0][0]) == px1
+    assert tuple(img.data[0][1]) == px1
+    assert tuple(img.data[0][2]) == px2
+    assert tuple(img.data[0][3]) == px2
+    assert tuple(img.data[0][4]) == px1
