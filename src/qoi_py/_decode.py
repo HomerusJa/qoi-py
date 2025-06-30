@@ -1,7 +1,7 @@
 from .types import RGBImage, RGBAImage, QOIChannelCount
-from .opcodes import QOIOpcode, MASK_2BIT_DATA
-from .header import QOIHeader
-from .pixel import Pixel
+from ._opcodes import QOIOpcode, MASK_2BIT_DATA
+from ._header import QOIHeader
+from ._pixel import Pixel
 import numpy as np
 from typing import assert_never, overload, Literal
 

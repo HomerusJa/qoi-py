@@ -1,4 +1,4 @@
-from qoi_py.opcodes import QOIOpcode
+from qoi_py._opcodes import QOIOpcode
 import pytest
 
 

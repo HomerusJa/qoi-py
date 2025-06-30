@@ -1,5 +1,5 @@
 from .types import ImageContent, QOIColorspace, QOIChannelCount
-from .header import QOIHeader
+from ._header import QOIHeader
 
 
 def qoi_encode(

@@ -1,4 +1,6 @@
-from qoi_py import qoi_decode, QOIChannelCount, QOIHeader, QOIColorspace
+from qoi_py import qoi_decode
+from qoi_py.types import QOIChannelCount, QOIColorspace
+from qoi_py._header import QOIHeader
 
 _END_MARKER = b"\x00" * 7 + b"\x01"
 
