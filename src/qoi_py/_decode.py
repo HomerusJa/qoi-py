@@ -71,18 +71,20 @@ def qoi_decode(
         match QOIOpcode.from_byte(byte1):
             case QOIOpcode.INDEX:
                 index = byte1 & MASK_2BIT_DATA
-                pixel = running_index[index].copy()
+                pixel = running_index[index]
 
                 in_data_pointer += 1
             case QOIOpcode.DIFF:
                 # Differences are -2..1
                 rdiff = ((byte1 & 0b00110000) >> 4) - 2
-                pixel.r = _wraparound(pixel.r + rdiff)
                 gdiff = ((byte1 & 0b00001100) >> 2) - 2
-                pixel.g = _wraparound(pixel.g + gdiff)
                 bdiff = (byte1 & 0b00000011) - 2
-                pixel.b = _wraparound(pixel.b + bdiff)
-                # alpha is unchanged
+                pixel = Pixel(
+                    r=_wraparound(pixel.r + rdiff),
+                    g=_wraparound(pixel.g + gdiff),
+                    b=_wraparound(pixel.b + bdiff),
+                    a=pixel.a,
+                )
 
                 in_data_pointer += 1
             case QOIOpcode.LUMA:
@@ -91,19 +93,24 @@ def qoi_decode(
                 rdiff_gdiff = ((byte2 & 0b11110000) >> 4) - 8
                 bdiff_gdiff = (byte2 & 0b00001111) - 8
 
-                pixel.r = _wraparound(pixel.r + rdiff_gdiff + gdiff)
-                pixel.g = _wraparound(pixel.g + gdiff)
-                pixel.b = _wraparound(pixel.b + bdiff_gdiff + gdiff)
+                pixel = Pixel(
+                    r=_wraparound(pixel.r + rdiff_gdiff + gdiff),
+                    g=_wraparound(pixel.g + gdiff),
+                    b=_wraparound(pixel.b + bdiff_gdiff + gdiff),
+                    a=pixel.a,
+                )
 
                 in_data_pointer += 2
             case QOIOpcode.RUN:
                 run_length = (byte1 & MASK_2BIT_DATA) + 1
                 in_data_pointer += 1
             case QOIOpcode.RGB:
-                pixel.r = data[in_data_pointer + 1]
-                pixel.g = data[in_data_pointer + 2]
-                pixel.b = data[in_data_pointer + 3]
-                # alpha stays unchanged
+                pixel = Pixel(
+                    r=data[in_data_pointer + 1],
+                    g=data[in_data_pointer + 2],
+                    b=data[in_data_pointer + 3],
+                    a=pixel.a,
+                )
 
                 in_data_pointer += 4  # Opcode + 3 color bytes
             case QOIOpcode.RGBA:
@@ -112,14 +119,16 @@ def qoi_decode(
                         "RGBA opcode encountered, but channels is not set to RGBA."
                     )
 
-                pixel.r = data[in_data_pointer + 1]
-                pixel.g = data[in_data_pointer + 2]
-                pixel.b = data[in_data_pointer + 3]
-                pixel.a = data[in_data_pointer + 4]
+                pixel = Pixel(
+                    r=data[in_data_pointer + 1],
+                    g=data[in_data_pointer + 2],
+                    b=data[in_data_pointer + 3],
+                    a=data[in_data_pointer + 4],
+                )
 
                 in_data_pointer += 5  # Opcode + 4 color bytes
 
-        running_index[pixel.hash()] = pixel.copy()
+        running_index[pixel.hash()] = pixel
 
         for _ in range(run_length if run_length is not None else 1):
             img_data[img_data_pointer][0] = pixel.r
@@ -146,4 +155,4 @@ def qoi_decode(
             data=img_data.reshape((header.height, header.width, 4)),
         )
     else:
-        assert_never()
+        assert_never(channels)
