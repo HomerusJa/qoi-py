@@ -20,7 +20,7 @@ def get_test_images_map_and_ids() -> tuple[list[tuple[Path, Path]], list[str]]:
 test_cases, test_ids = get_test_images_map_and_ids()
 
 
-@pytest.mark.xfail(reason="Implementation has bugs")
+# @pytest.mark.xfail(reason="Implementation has bugs")
 @pytest.mark.e2e
 @pytest.mark.parametrize("qoi_image, png_image", test_cases, ids=test_ids)
 def test_qoi_decode(qoi_image: Path, png_image: Path):
@@ -32,7 +32,7 @@ def test_qoi_decode(qoi_image: Path, png_image: Path):
 
     res = qoi_decode(qoi_data)
 
-    assert (res.width, res.height) == res.data.shape[:2], (
+    assert (res.height, res.width) == res.data.shape[:2], (
         "The data provided about the image dimensions is not consistent"
     )
     assert res.data.shape == png_array.shape, "The shapes of the images does not match"
