@@ -15,8 +15,9 @@ def test_decode_minimal_rgb():
     # RGB opcode (0xFE), pixel (r=10, g=20, b=30)
     data = header + bytes([0xFE, 10, 20, 30]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
-    assert img.width == 1
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 1, QOIChannelCount.RGB)
+
     assert img.data[0, 0, 0] == 10
     assert img.data[0, 0, 1] == 20
     assert img.data[0, 0, 2] == 30
@@ -32,8 +33,8 @@ def test_decode_run():
     # RGB opcode (0xFE) (r=10, g=20, b=30); run opcode and three pixel run (0xC2) -> bias of -1
     data = header + bytes([0xFE, 10, 20, 30, 0xC2]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
-    assert img.width == 4
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 4, QOIChannelCount.RGB)
 
     for i in range(4):
         assert img.data[0][i][0] == 10
@@ -51,8 +52,8 @@ def test_decode_rgba_run():
     # RGBA opcode (0xFF) (r=10, g=20, b=30, a=40); run opcode and three pixel run (0xC2) -> bias of -1
     data = header + bytes([0xFF, 10, 20, 30, 40, 0xC2]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
-    assert img.width == 4
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 4, QOIChannelCount.RGBA)
 
     for i in range(4):
         assert img.data[0][i][0] == 10
@@ -74,8 +75,11 @@ def test_decode_multiple_rgb_pixels():
         + bytes([0xFE, 10, 20, 30, 0xFE, 40, 50, 60, 0xFE, 15, 26, 34])
         + _END_MARKER
     )
-    row = qoi_decode(data, QOIChannelCount.RGB).data[0]
+    img = qoi_decode(data, QOIChannelCount.RGB)
 
+    assert (img.height, img.width, img.channels) == (1, 4, QOIChannelCount.RGB)
+
+    row = img.data[0]
     assert row[0][0] == 10
     assert row[0][1] == 20
     assert row[0][2] == 30
@@ -103,8 +107,11 @@ def test_decode_multiple_rgba_pixels():
         + bytes([0xFF, 10, 20, 30, 255, 0xFF, 40, 50, 60, 230, 0xFF, 15, 26, 34, 120])
         + _END_MARKER
     )
-    row = qoi_decode(data, QOIChannelCount.RGBA).data[0]
+    img = qoi_decode(data, QOIChannelCount.RGBA)
 
+    assert (img.height, img.width, img.channels) == (1, 3, QOIChannelCount.RGBA)
+
+    row = img.data[0]
     assert row[0][0] == 10
     assert row[0][1] == 20
     assert row[0][2] == 30
@@ -132,8 +139,8 @@ def test_decode_index_rgba():
     # Index opcode (0x00) -> uses the pixel at index 12
     data = header + bytes([0xFF, 10, 20, 30, 40, 0x0C]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
-    assert img.width == 2
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGBA)
 
     assert img.data[0][0][0] == 10
     assert img.data[0][0][1] == 20
@@ -157,8 +164,8 @@ def test_decode_index_rgb():
     # Index opcode (0x00) -> uses the pixel at index 9
     data = header + bytes([0xFE, 10, 20, 30, 0x09]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
-    assert img.width == 2
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 10
     assert img.data[0][0][1] == 20
@@ -181,8 +188,8 @@ def test_decode_diff_rgb():
     # Diff opcode (0x80) with rdiff = 1, gdiff = -2, bdiff = 0
     data = header + bytes([0xFE, 10, 20, 30, 0b01110010]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
-    assert img.width == 2
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 10
     assert img.data[0][0][1] == 20
@@ -206,8 +213,8 @@ def test_decode_diff_rgba():
     # Note: The alpha channel is not affected by the diff opcode.
     data = header + bytes([0xFF, 10, 20, 30, 40, 0b01110010]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
-    assert img.width == 2
-    assert img.height == 1
+
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGBA)
 
     assert img.data[0][0][0] == 10
     assert img.data[0][0][1] == 20
@@ -232,8 +239,7 @@ def test_decode_luma_rgb_gdiff_only():
     data = header + bytes([0xFE, 40, 50, 60, 0b10000000, 0x88]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
-    assert img.width == 2
-    assert img.height == 1
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 40
     assert img.data[0][0][1] == 50
@@ -256,8 +262,7 @@ def test_decode_luma_rgb_gdiff_only_wraparound_low():
     data = header + bytes([0xFE, 10, 20, 32, 0b10000000, 0x88]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
-    assert img.width == 2
-    assert img.height == 1
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 10
     assert img.data[0][0][1] == 20
@@ -280,8 +285,7 @@ def test_decode_luma_rgb_gdiff_only_wraparound_high():
     data = header + bytes([0xFE, 224, 240, 250, 0b10111111, 0x88]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
-    assert img.width == 2
-    assert img.height == 1
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 224
     assert img.data[0][0][1] == 240
@@ -304,8 +308,7 @@ def test_decode_luma_rgb_all_diffs():
     data = header + bytes([0xFE, 80, 90, 100, 0b10000000, 0b00001111]) + _END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
-    assert img.width == 2
-    assert img.height == 1
+    assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
 
     assert img.data[0][0][0] == 80
     assert img.data[0][0][1] == 90
@@ -337,7 +340,7 @@ def test_decode_index_use_multiple_times():
     # fmt: on
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
-    assert img.data.shape == (1, 5, 4)  # 1 row, 5 pixels, 4 channels (RGBA)
+    assert (img.height, img.width, img.channels) == (1, 5, QOIChannelCount.RGBA)
 
     px1 = (10, 20, 30, 255)
     px2 = (40, 50, 60, 255)
