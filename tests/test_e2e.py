@@ -20,11 +20,18 @@ def get_test_images_map_and_ids() -> tuple[list[tuple[Path, Path]], list[str]]:
 test_cases, test_ids = get_test_images_map_and_ids()
 
 
-# @pytest.mark.xfail(reason="Implementation has bugs")
 @pytest.mark.e2e
 @pytest.mark.parametrize("qoi_image, png_image", test_cases, ids=test_ids)
 def test_qoi_decode(qoi_image: Path, png_image: Path):
     """Test decoding QOI images to PNG format."""
+    if qoi_image.stem == "edgecase":
+        pytest.xfail(
+            "While the QOI image satisfies the QOI spec and specifies it's "
+            "channel count as 4, the png image as decoded by PIL has 3 "
+            "channels. This leads to a test failure here which needs to be "
+            "investigated further."
+        )
+
     qoi_data = qoi_image.read_bytes()
 
     with Image.open(png_image) as png_pil:
