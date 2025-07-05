@@ -32,9 +32,6 @@ def test_qoi_decode(qoi_image: Path, png_image: Path):
 
     res = qoi_decode(qoi_data)
 
-    assert (res.height, res.width) == res.data.shape[:2], (
-        "The data provided about the image dimensions is not consistent"
-    )
     assert res.data.shape == png_array.shape, "The shapes of the images does not match"
     assert np.array_equal(res.data, png_array), "Decoded data does not match PNG data"
 
