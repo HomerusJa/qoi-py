@@ -142,15 +142,11 @@ def qoi_decode(
 
     if channels == QOIChannelCount.RGB:
         return RGBImage(
-            width=header.width,
-            height=header.height,
             colorspace=header.colorspace,
             data=img_data.reshape((header.height, header.width, 3)),
         )
     elif channels == QOIChannelCount.RGBA:
         return RGBAImage(
-            width=header.width,
-            height=header.height,
             colorspace=header.colorspace,
             data=img_data.reshape((header.height, header.width, 4)),
         )

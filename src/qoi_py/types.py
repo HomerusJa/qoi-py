@@ -41,20 +41,57 @@ ImageContent = RGBAImageContent | RGBImageContent
 
 
 @dataclass
-class RGBImage:
-    """RGB image with QOI colorspace and shape (height, width, 3)."""
+class Image:
+    """Image data with shape (height, width, channels) and QOI colorspace"""
 
-    width: int
-    height: int
+    data: ImageContent
     colorspace: QOIColorspace
-    data: RGBImageContent
+
+    @property
+    def width(self) -> int:
+        """Width of the image."""
+        return self.data.shape[1]
+
+    @property
+    def height(self) -> int:
+        """Height of the image."""
+        return self.data.shape[0]
+
+    @property
+    def channels(self) -> QOIChannelCount:
+        """Number of channels in the image."""
+        return QOIChannelCount(self.data.shape[2])
 
 
 @dataclass
-class RGBAImage:
-    """RGBA image with QOI colorspace and shape (height, width, 4)."""
+class RGBImage(Image):
+    """RGB image data with shape (height, width, 3) and QOI colorspace"""
 
-    width: int
-    height: int
-    colorspace: QOIColorspace
+    data: RGBImageContent
+
+    def __post_init__(self):
+        assert self.data.shape[2] == 3, (
+            f"RGBImage must have 3 channels, got {self.data.shape[2]}."
+        )
+
+    @property
+    def channels(self) -> QOIChannelCount:
+        """Number of channels in the image."""
+        return QOIChannelCount.RGB
+
+
+@dataclass
+class RGBAImage(Image):
+    """RGBA image data with shape (height, width, 4) and QOI colorspace"""
+
     data: RGBAImageContent
+
+    def __post_init__(self):
+        assert self.data.shape[2] == 4, (
+            f"RGBAImage must have 4 channels, got {self.data.shape[2]}."
+        )
+
+    @property
+    def channels(self) -> QOIChannelCount:
+        """Number of channels in the image."""
+        return QOIChannelCount.RGBA
