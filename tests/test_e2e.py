@@ -61,3 +61,21 @@ def test_qoi_encode(qoi_image: Path, png_image: Path):
     assert qoi_data == res_bytes, (
         "The encoded image does not match the content of the test image"
     )
+
+
+@pytest.mark.skip(reason="Not implemented")
+@pytest.mark.e2e
+@pytest.mark.parametrize("qoi_image, _", test_cases, ids=test_ids)
+def test_qoi_decode_encode_matches(qoi_image: Path, _):
+    """Test that decoding and then encoding a QOI image results in the same data."""
+    qoi_data = qoi_image.read_bytes()
+
+    res = qoi_decode(qoi_data)
+    res_bytes = qoi_encode(res.data)
+
+    assert len(qoi_data) == len(res_bytes), (
+        "The lengths of the original and encoded data do not match"
+    )
+    assert qoi_data == res_bytes, (
+        "The decoded and re-encoded data does not match the original QOI data"
+    )
