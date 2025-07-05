@@ -1,3 +1,10 @@
+"""Module for handling the overall structure of a QOI image file.
+
+It provides the `QOIHeader` dataclass, which represents the header of a QOI
+image file, and the END_MARKER constant, which is used to indicate the end of a
+QOI image file.
+"""
+
 from dataclasses import dataclass
 
 from .types import QOIColorspace, QOIChannelCount
@@ -58,3 +65,6 @@ class QOIHeader:
         channels = bytes([self.channels.value])
         colorspace = bytes([self.colorspace.value])
         return magic + width + height + channels + colorspace
+
+
+END_MARKER = b"\x00" * 7 + b"\x01"

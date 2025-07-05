@@ -1,4 +1,4 @@
-from qoi_py._header import QOIHeader
+from qoi_py._structure import QOIHeader
 import pytest
 
 

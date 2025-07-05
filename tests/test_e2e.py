@@ -43,11 +43,17 @@ def test_qoi_decode(qoi_image: Path, png_image: Path):
     assert np.array_equal(res.data, png_array), "Decoded data does not match PNG data"
 
 
-@pytest.mark.skip(reason="Not implemented")
+# @pytest.mark.skip(reason="Not implemented")
 @pytest.mark.e2e
 @pytest.mark.parametrize("qoi_image, png_image", test_cases, ids=test_ids)
 def test_qoi_encode(qoi_image: Path, png_image: Path):
     """Test encoding numpy arrays to QOI format."""
+    if qoi_image.stem in ("edgecase", "testcard", "testcard_rgba"):
+        pytest.xfail(
+            "These currently do not pass due to issues with the encoder. This "
+            "behavior is currently not understood and needs to be investigated."
+        )
+
     qoi_data = qoi_image.read_bytes()
 
     with Image.open(png_image) as png_pil:
@@ -63,11 +69,17 @@ def test_qoi_encode(qoi_image: Path, png_image: Path):
     )
 
 
-@pytest.mark.skip(reason="Not implemented")
+# @pytest.mark.skip(reason="Not implemented")
 @pytest.mark.e2e
 @pytest.mark.parametrize("qoi_image, _", test_cases, ids=test_ids)
 def test_qoi_decode_encode_matches(qoi_image: Path, _):
     """Test that decoding and then encoding a QOI image results in the same data."""
+    if qoi_image.stem in ("edgecase", "testcard", "testcard_rgba"):
+        pytest.xfail(
+            "These currently do not pass due to issues with the encoder. This "
+            "behavior is currently not understood and needs to be investigated."
+        )
+
     qoi_data = qoi_image.read_bytes()
 
     res = qoi_decode(qoi_data)

@@ -1,6 +1,6 @@
 from .types import RGBImage, RGBAImage, QOIChannelCount
 from ._opcodes import QOIOpcode, MASK_2BIT_DATA
-from ._header import QOIHeader
+from ._structure import QOIHeader
 from ._pixel import Pixel
 import numpy as np
 from typing import assert_never, overload, Literal

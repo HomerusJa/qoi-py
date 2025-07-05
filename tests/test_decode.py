@@ -1,8 +1,6 @@
 from qoi_py import qoi_decode
 from qoi_py.types import QOIChannelCount, QOIColorspace
-from qoi_py._header import QOIHeader
-
-_END_MARKER = b"\x00" * 7 + b"\x01"
+from qoi_py._structure import QOIHeader, END_MARKER
 
 
 def test_decode_minimal_rgb():
@@ -13,7 +11,7 @@ def test_decode_minimal_rgb():
         colorspace=QOIColorspace.SRGB,
     ).to_bytes()
     # RGB opcode (0xFE), pixel (r=10, g=20, b=30)
-    data = header + bytes([0xFE, 10, 20, 30]) + _END_MARKER
+    data = header + bytes([0xFE, 10, 20, 30]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 1, QOIChannelCount.RGB)
@@ -31,7 +29,7 @@ def test_decode_run():
         colorspace=QOIColorspace.SRGB,
     ).to_bytes()
     # RGB opcode (0xFE) (r=10, g=20, b=30); run opcode and three pixel run (0xC2) -> bias of -1
-    data = header + bytes([0xFE, 10, 20, 30, 0xC2]) + _END_MARKER
+    data = header + bytes([0xFE, 10, 20, 30, 0xC2]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 4, QOIChannelCount.RGB)
@@ -50,7 +48,7 @@ def test_decode_rgba_run():
         colorspace=QOIColorspace.SRGB,
     ).to_bytes()
     # RGBA opcode (0xFF) (r=10, g=20, b=30, a=40); run opcode and three pixel run (0xC2) -> bias of -1
-    data = header + bytes([0xFF, 10, 20, 30, 40, 0xC2]) + _END_MARKER
+    data = header + bytes([0xFF, 10, 20, 30, 40, 0xC2]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
     assert (img.height, img.width, img.channels) == (1, 4, QOIChannelCount.RGBA)
@@ -73,7 +71,7 @@ def test_decode_multiple_rgb_pixels():
     data = (
         header
         + bytes([0xFE, 10, 20, 30, 0xFE, 40, 50, 60, 0xFE, 15, 26, 34])
-        + _END_MARKER
+        + END_MARKER
     )
     img = qoi_decode(data, QOIChannelCount.RGB)
 
@@ -105,7 +103,7 @@ def test_decode_multiple_rgba_pixels():
     data = (
         header
         + bytes([0xFF, 10, 20, 30, 255, 0xFF, 40, 50, 60, 230, 0xFF, 15, 26, 34, 120])
-        + _END_MARKER
+        + END_MARKER
     )
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
@@ -137,7 +135,7 @@ def test_decode_index_rgba():
     ).to_bytes()
     # RGBA opcode (0xFF) (r=10, g=20, b=30, a=40) -> hash is 12
     # Index opcode (0x00) -> uses the pixel at index 12
-    data = header + bytes([0xFF, 10, 20, 30, 40, 0x0C]) + _END_MARKER
+    data = header + bytes([0xFF, 10, 20, 30, 40, 0x0C]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGBA)
@@ -162,7 +160,7 @@ def test_decode_index_rgb():
     ).to_bytes()
     # RGB opcode (0xFE) (r=10, g=20, b=30, (a=255)), alpha implicit -> hash is 9
     # Index opcode (0x00) -> uses the pixel at index 9
-    data = header + bytes([0xFE, 10, 20, 30, 0x09]) + _END_MARKER
+    data = header + bytes([0xFE, 10, 20, 30, 0x09]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -186,7 +184,7 @@ def test_decode_diff_rgb():
     # RGB opcode (0xFE) (r=10, g=20, b=30)
     # Diffs can be between -2 and 1 inclusive, saved with a bias of -2
     # Diff opcode (0x80) with rdiff = 1, gdiff = -2, bdiff = 0
-    data = header + bytes([0xFE, 10, 20, 30, 0b01110010]) + _END_MARKER
+    data = header + bytes([0xFE, 10, 20, 30, 0b01110010]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -211,7 +209,7 @@ def test_decode_diff_rgba():
     # Diffs can be between -2 and 1 inclusive, saved with a bias of -2
     # Diff opcode (0x80) with rdiff = 1, gdiff = -2, bdiff = 0, alpha must stay unchanged
     # Note: The alpha channel is not affected by the diff opcode.
-    data = header + bytes([0xFF, 10, 20, 30, 40, 0b01110010]) + _END_MARKER
+    data = header + bytes([0xFF, 10, 20, 30, 40, 0b01110010]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGBA)
@@ -236,7 +234,7 @@ def test_decode_luma_rgb_gdiff_only():
     ).to_bytes()
     # RGB opcode (0xFE) (r=40, g=50, b=60)
     # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
-    data = header + bytes([0xFE, 40, 50, 60, 0b10000000, 0x88]) + _END_MARKER
+    data = header + bytes([0xFE, 40, 50, 60, 0b10000000, 0x88]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -259,7 +257,7 @@ def test_decode_luma_rgb_gdiff_only_wraparound_low():
     ).to_bytes()
     # RGB opcode (0xFE) (r=10, g=20, b=32)
     # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
-    data = header + bytes([0xFE, 10, 20, 32, 0b10000000, 0x88]) + _END_MARKER
+    data = header + bytes([0xFE, 10, 20, 32, 0b10000000, 0x88]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -282,7 +280,7 @@ def test_decode_luma_rgb_gdiff_only_wraparound_high():
     ).to_bytes()
     # RGB opcode (0xFE) (r=224, g=240, b=250)
     # Luma opcode (0x80) with gdiff = 31 (bias of 32), rdiff_gdiff = 0, bdiff_gdiff = 0 (each with a bias of 8)
-    data = header + bytes([0xFE, 224, 240, 250, 0b10111111, 0x88]) + _END_MARKER
+    data = header + bytes([0xFE, 224, 240, 250, 0b10111111, 0x88]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -305,7 +303,7 @@ def test_decode_luma_rgb_all_diffs():
     ).to_bytes()
     # RGB opcode (0xFE) (r=80, g=90, b=100)
     # Luma opcode (0x80) with gdiff = -32 (bias of 32), rdiff_gdiff = -8, bdiff_gdiff = 7 (both with a bias of 8)
-    data = header + bytes([0xFE, 80, 90, 100, 0b10000000, 0b00001111]) + _END_MARKER
+    data = header + bytes([0xFE, 80, 90, 100, 0b10000000, 0b00001111]) + END_MARKER
     img = qoi_decode(data, QOIChannelCount.RGB)
 
     assert (img.height, img.width, img.channels) == (1, 2, QOIChannelCount.RGB)
@@ -336,7 +334,7 @@ def test_decode_index_use_multiple_times():
             0b00001011,             # INDEX opcode (0b00) and index 11
             0b00001001,             # INDEX opcode (0b00) and index 9 again  -> This decoded the second pixel before
         ]
-    ) + _END_MARKER
+    ) + END_MARKER
     # fmt: on
     img = qoi_decode(data, QOIChannelCount.RGBA)
 
